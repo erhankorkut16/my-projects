@@ -49,7 +49,7 @@ Resources:
             wget $FOLDER/cat2.jpg
             wget $FOLDER/cat3.png
             systemctl start httpd
-            systemctl enable httpd"String
+            systemctl enable httpd"
 
 Outputs:
   WebsiteURL:
