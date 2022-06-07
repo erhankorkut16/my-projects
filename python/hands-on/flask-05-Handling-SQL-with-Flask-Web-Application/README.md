@@ -89,5 +89,8 @@ At the end of the this hands-on training, students will be able to;
 - Install `flask_mysql`.
 
 - Run application with Python
-
-
+sudo install pip3
+sudo pip3 install flask-mysql
+sudo pip3 install sqlalchemy
+sudo pip3 install Flask-SQLAlchemy
+sudo python3 app-with-mysql.py # programı çalıştırmak için
