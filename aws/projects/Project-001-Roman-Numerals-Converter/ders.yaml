@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  
+Parameters:
+  
+  myVPC:
+    Description: select vpc
+    Type: AWS::EC2::VPC::Id
+   
+    
+
+  mySUB:
+    Description: select at least two subnet
+    Type: List<AWS::EC2::Subnet::Id>
+    
+
+  mykey:
+    Description: select your keypair
+    Type: AWS::EC2::KeyPair::KeyName
+    
+  InstanceType:
+    Description: select your instance type 
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+    - t2.micro 
+    - t3.micro
+
+Mappings:
+  RegionImageMap:
+    us-east-1:
+      AMI: ami-0022f774911c1d690
+    us-east-2:
+      AMI: ami-0233c2d874b811deb
+    us-west-1:
+      AMI: ami-0ed05376b59b90e46
+    us-west-2:
+      AMI: ami-0dc8f589abe99f538
+    eu-west-1:
+      AMI: ami-058b1b7fe545997ae
+
+  
+Resources:
+  mylistener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: # Required
+        - Type: forward
+          TargetGroupArn: !Ref target
+      LoadBalancerArn: !Ref myLB
+      Port: 80
+      Protocol: HTTP 
+  
+  myASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      
+      AvailabilityZones: !GetAZs 
+      
+      DesiredCapacity: 2
+      HealthCheckGracePeriod: 90
+      HealthCheckType: ELB     
+      LaunchTemplate:
+        LaunchTemplateId: !Ref derstemp
+        Version: "1"
+     
+      MaxSize: 4
+    
+      MinSize: 1
+      
+      TargetGroupARNs:
+        - !Ref target
+    
+  mypolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref myASG
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 60.0
+  
+  myLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      SecurityGroups:
+        - !GetAtt mySec.GroupId
+      Subnets: !Ref mySUB
+      Type: application 
+
+  derstemp:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: !FindInMap 
+          - RegionImageMap
+          - !Ref AWS::Region
+          - AMI
+        InstanceType: !Ref InstanceType
+        KeyName: !Ref mykey
+        SecurityGroupIds:
+          - !GetAtt mySec.GroupId
+        UserData: !Base64 |
+          #! /bin/bash
+          yum update -y
+          sudo pip3 install flask
+          sudo yum install git -y 
+          git clone https://github.com/erhankorkut16/my-projects.git
+          cd my-projects/aws/projects/Project-001-Roman-Numerals-Converter/
+          sudo python3 app.py
+
+  target:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+     
+      HealthCheckIntervalSeconds: 10
+     
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+    
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 3
+      VpcId: !Ref myVPC
+
+  mySec:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: this group enable ssh-http # Required
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref myVPC
+ 
